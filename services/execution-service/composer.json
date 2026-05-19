@@ -1,0 +1,49 @@
+{
+    "name": "flowforge/execution-service",
+    "type": "project",
+    "description": "FlowForge Execution Service - DAG Execution, Retry, Logs, Events",
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^12.0",
+        "firebase/php-jwt": "^6.10",
+        "ramsey/uuid": "^4.7",
+        "vladimir-yuldashev/laravel-queue-rabbitmq": "^14.0",
+        "guzzlehttp/guzzle": "^7.9"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "laravel/pint": "^1.18",
+        "mockery/mockery": "^1.6",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "audit": {
+            "ignored": ["PKSA-y2cr-5h3j-g3ys"]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
