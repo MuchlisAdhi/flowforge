@@ -1,0 +1,299 @@
+version: '3.8'
+
+services:
+  # ===========================================
+  # Infrastructure
+  # ===========================================
+  
+  nginx:
+    build:
+      context: ./infra/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+      - frontend
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: flowforge
+      POSTGRES_USER: flowforge
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - flowforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - flowforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: flowforge
+      RABBITMQ_DEFAULT_PASS: secret
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - flowforge
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # ===========================================
+  # Backend Services
+  # ===========================================
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:randomkeyhere1234567890123456789=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=flowforge
+      - DB_USERNAME=flowforge
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - IDENTITY_SERVICE_URL=http://identity-service:8001
+      - WORKFLOW_SERVICE_URL=http://workflow-service:8002
+      - EXECUTION_SERVICE_URL=http://execution-service:8003
+      - AI_SERVICE_URL=http://ai-service:8004
+      - RATE_LIMIT_PER_MINUTE=60
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  identity-service:
+    build:
+      context: ./services/identity-service
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:randomkeyhere1234567890123456789=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=flowforge
+      - DB_USERNAME=flowforge
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-jwt-secret-change-in-production
+      - JWT_TTL=60
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  workflow-service:
+    build:
+      context: ./services/workflow-service
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:randomkeyhere1234567890123456789=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=flowforge
+      - DB_USERNAME=flowforge
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=flowforge
+      - RABBITMQ_PASSWORD=secret
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  execution-service:
+    build:
+      context: ./services/execution-service
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:randomkeyhere1234567890123456789=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=flowforge
+      - DB_USERNAME=flowforge
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=flowforge
+      - RABBITMQ_PASSWORD=secret
+      - EXECUTION_MAX_PARALLEL=10
+      - EXECUTION_GLOBAL_TIMEOUT=3600
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  execution-worker:
+    build:
+      context: ./services/execution-service
+      dockerfile: Dockerfile
+    command: php artisan queue:work rabbitmq --sleep=3 --tries=3 --max-time=3600
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:randomkeyhere1234567890123456789=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=flowforge
+      - DB_USERNAME=flowforge
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=flowforge
+      - RABBITMQ_PASSWORD=secret
+      - QUEUE_CONNECTION=rabbitmq
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:randomkeyhere1234567890123456789=
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=flowforge
+      - DB_USERNAME=flowforge
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_PROVIDER=mock
+      - AI_BASE_URL=https://api.groq.com/openai/v1
+      - AI_API_KEY=
+      - AI_MODEL=llama-3.3-70b-versatile
+      - AI_MAX_TOKENS=4096
+      - AI_TEMPERATURE=0.2
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+  # ===========================================
+  # Frontend
+  # ===========================================
+
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost/api
+      - VITE_WS_URL=ws://localhost/ws
+    networks:
+      - flowforge
+    restart: unless-stopped
+
+networks:
+  flowforge:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:

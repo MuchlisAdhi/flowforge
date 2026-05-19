@@ -1,0 +1,422 @@
+name: FlowForge CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '20'
+
+jobs:
+  # =============================================
+  # Backend: Identity Service
+  # =============================================
+  identity-service:
+    name: Identity Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/identity-service
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: flowforge_test
+          POSTGRES_USER: flowforge
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowforge"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis, pcntl, zip
+          coverage: pcov
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: services/identity-service/vendor
+          key: ${{ runner.os }}-composer-identity-${{ hashFiles('services/identity-service/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-identity-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy env
+        run: cp .env.testing .env
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Run linting
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test --coverage --min=70
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: flowforge_test
+          DB_USERNAME: flowforge
+          DB_PASSWORD: secret
+          REDIS_HOST: 127.0.0.1
+
+  # =============================================
+  # Backend: Workflow Service
+  # =============================================
+  workflow-service:
+    name: Workflow Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/workflow-service
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: flowforge_test
+          POSTGRES_USER: flowforge
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowforge"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis, pcntl, zip
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: services/workflow-service/vendor
+          key: ${{ runner.os }}-composer-workflow-${{ hashFiles('services/workflow-service/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy env
+        run: cp .env.testing .env
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Run linting
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test --coverage --min=70
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: flowforge_test
+          DB_USERNAME: flowforge
+          DB_PASSWORD: secret
+
+  # =============================================
+  # Backend: Execution Service
+  # =============================================
+  execution-service:
+    name: Execution Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/execution-service
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: flowforge_test
+          POSTGRES_USER: flowforge
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowforge"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis, pcntl, zip
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: services/execution-service/vendor
+          key: ${{ runner.os }}-composer-execution-${{ hashFiles('services/execution-service/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy env
+        run: cp .env.testing .env
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Run linting
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test --coverage --min=70
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: flowforge_test
+          DB_USERNAME: flowforge
+          DB_PASSWORD: secret
+
+  # =============================================
+  # Backend: AI Service
+  # =============================================
+  ai-service:
+    name: AI Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ai-service
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: flowforge_test
+          POSTGRES_USER: flowforge
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flowforge"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis, pcntl, zip
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: services/ai-service/vendor
+          key: ${{ runner.os }}-composer-ai-${{ hashFiles('services/ai-service/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy env
+        run: cp .env.testing .env
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Run linting
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: flowforge_test
+          AI_PROVIDER: mock
+
+  # =============================================
+  # Frontend
+  # =============================================
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: services/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type check
+        run: npm run type-check
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
+
+  # =============================================
+  # E2E Tests
+  # =============================================
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [identity-service, workflow-service, execution-service, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Start services
+        run: docker compose up -d --build
+        timeout-minutes: 10
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30
+          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost/health
+
+      - name: Run migrations
+        run: |
+          docker compose exec -T identity-service php artisan migrate --seed
+          docker compose exec -T workflow-service php artisan migrate
+          docker compose exec -T execution-service php artisan migrate
+
+      - name: Install Playwright
+        working-directory: services/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: services/frontend
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: services/frontend/playwright-report/
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
+  # =============================================
+  # Docker Build
+  # =============================================
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [identity-service, workflow-service, execution-service, ai-service, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build API Gateway
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/api-gateway
+          push: false
+          tags: flowforge/api-gateway:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Identity Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/identity-service
+          push: false
+          tags: flowforge/identity-service:${{ github.sha }}
+
+      - name: Build Workflow Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/workflow-service
+          push: false
+          tags: flowforge/workflow-service:${{ github.sha }}
+
+      - name: Build Execution Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/execution-service
+          push: false
+          tags: flowforge/execution-service:${{ github.sha }}
+
+      - name: Build AI Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/ai-service
+          push: false
+          tags: flowforge/ai-service:${{ github.sha }}
+
+      - name: Build Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/frontend
+          push: false
+          tags: flowforge/frontend:${{ github.sha }}

@@ -1,0 +1,44 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker-data/
+
+# Logs
+*.log
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Cache
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+
+# Testing
+coverage/
+.phpunit.result.cache
+test-results/
+
+# Compiled
+*.js.map
