@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { VueFlow, type Node, type Edge } from '@vueflow/core'
-import '@vueflow/core/dist/style.css'
-import '@vueflow/core/dist/theme-default.css'
+import { VueFlow, type Node, type Edge } from '@vue-flow/core'
+import '@vue-flow/core/dist/style.css'
+import '@vue-flow/core/dist/theme-default.css'
 import type { WorkflowStep } from '@/types'
 
 const props = defineProps<{

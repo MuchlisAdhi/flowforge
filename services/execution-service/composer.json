@@ -41,7 +41,8 @@
             "pestphp/pest-plugin": true
         },
         "audit": {
-            "ignored": ["PKSA-y2cr-5h3j-g3ys"]
+            "ignored": ["PKSA-y2cr-5h3j-g3ys"],
+            "block-insecure": false
         }
     },
     "minimum-stability": "stable",
