@@ -38,6 +38,9 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true
+        },
+        "audit": {
+            "ignored": ["PKSA-y2cr-5h3j-g3ys"]
         }
     },
     "minimum-stability": "stable",
