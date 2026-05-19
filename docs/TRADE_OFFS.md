@@ -116,6 +116,93 @@
 
 ---
 
+## 11. Microservices MVP vs Production Microservices
+
+### MVP Architecture (Current)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Monorepo with 5 Laravel apps, shared PostgreSQL, docker-compose │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**What we have:**
+- 5 Laravel services (identity, workflow, execution, AI, gateway)
+- Shared PostgreSQL database (logical separation by table ownership)
+- RabbitMQ for async workflow execution dispatch
+- Redis for rate limiting, caching, and SSE pub/sub
+- Synchronous HTTP inter-service communication via gateway
+- Single docker-compose for local development
+- Shared JWT secret across services for token validation
+
+**What makes this "microservices-lite":**
+- Clear bounded contexts (identity ≠ workflow ≠ execution)
+- Independent deployable units (each has own Dockerfile)
+- Service-to-service communication via HTTP (not shared memory)
+- Async execution decoupled via queue
+- Each service has own route definitions and middleware stack
+
+**What's NOT production microservices:**
+- Shared database (no data ownership boundary)
+- No service mesh / service discovery
+- No distributed tracing built-in
+- No circuit breaker patterns
+- JWT validated locally (no token introspection endpoint)
+- No API versioning strategy
+- No saga pattern for distributed transactions
+
+### Production Architecture (Target)
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Separate repos, database-per-service, service mesh, event sourcing       │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Migration roadmap from MVP → Production:**
+
+| Step | Change | Risk | Timeline |
+|------|--------|------|----------|
+| 1 | Add distributed tracing (OpenTelemetry) | Low | Week 1 |
+| 2 | Extract identity-service DB | Medium | Week 2-3 |
+| 3 | Replace HTTP calls with async events where possible | Medium | Week 3-4 |
+| 4 | Add circuit breakers (resilience4php or custom) | Low | Week 4 |
+| 5 | Token introspection endpoint (replace shared JWT secret) | Medium | Week 5 |
+| 6 | Database-per-service for workflow + execution | High | Week 6-8 |
+| 7 | Service mesh (Istio/Linkerd) for observability | Medium | Week 8-10 |
+| 8 | Event sourcing for execution logs | High | Week 10-12 |
+
+### Key Differences Explained
+
+| Aspect | MVP | Production |
+|--------|-----|------------|
+| **Data ownership** | Shared DB, FK constraints | DB-per-service, eventual consistency |
+| **Communication** | Sync HTTP + RabbitMQ | Event-driven (AMQP/Kafka) + gRPC |
+| **Consistency** | Strong (single DB transaction) | Eventual (saga pattern) |
+| **Service discovery** | Hardcoded URLs in ENV | Consul/Kubernetes DNS |
+| **Auth propagation** | JWT decoded locally | Token introspection + mTLS |
+| **Failure handling** | Try/catch + queue retry | Circuit breaker + dead letter + alerts |
+| **Observability** | Application logs | Distributed traces + metrics + logs |
+| **Deployment** | docker-compose | Kubernetes / ECS with rolling updates |
+| **Schema migration** | `artisan migrate` all services | Per-service migration with backward compat |
+
+### Why This MVP Approach is Correct for 4 Days
+
+1. **Proves the architecture** — boundaries are drawn correctly, upgrading to true microservices is incremental, not rewrite
+2. **Local development** — `docker compose up` just works, no complex service mesh setup
+3. **Testing** — integration tests can assert across boundaries easily
+4. **Shared understanding** — team can see all code in one place
+5. **No premature optimization** — we don't know traffic patterns yet, so we don't over-engineer
+
+### Anti-Patterns We Avoided
+
+- ❌ **Distributed monolith**: Services don't share models/code (each has own Model classes)
+- ❌ **Chatty services**: Gateway batches/forwards, services don't call each other directly (except AI analysis)
+- ❌ **Shared state**: Each service maintains its own in-memory state
+- ❌ **Anemic services**: Each service has meaningful business logic, not just CRUD proxies
+
+---
+
 ## Summary Matrix
 
 | Decision | Speed | Security | Scalability | Maintainability |

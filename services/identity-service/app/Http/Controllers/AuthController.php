@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
@@ -8,6 +10,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -20,34 +23,32 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
 
-        // Create tenant if new registration
-        $tenant = Tenant::create([
-            'name' => $validated['tenant_name'],
-            'slug' => str($validated['tenant_name'])->slug(),
-            'is_active' => true,
-        ]);
+        // Wrap tenant+user creation in transaction for atomicity
+        [$tenant, $user] = DB::transaction(function () use ($validated): array {
+            $tenant = Tenant::create([
+                'name' => $validated['tenant_name'],
+                'slug' => str($validated['tenant_name'])->slug()->toString(),
+                'is_active' => true,
+            ]);
 
-        $user = User::create([
-            'tenant_id' => $tenant->id,
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-            'role' => 'admin', // First user of tenant is admin
-            'is_active' => true,
-        ]);
+            $user = User::create([
+                'tenant_id' => $tenant->id,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+                'role' => 'admin', // First user of a tenant is always admin
+                'is_active' => true,
+            ]);
+
+            return [$tenant, $user];
+        });
 
         $token = $this->jwtService->generateToken($user);
 
         return response()->json([
             'message' => 'Registration successful',
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'tenant_id' => $user->tenant_id,
-                ],
+                'user' => $this->formatUser($user),
                 'token' => $token,
                 'token_type' => 'Bearer',
                 'expires_in' => $this->jwtService->getTokenTTL() * 60,
@@ -84,13 +85,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login successful',
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'tenant_id' => $user->tenant_id,
-                ],
+                'user' => $this->formatUser($user),
                 'token' => $token,
                 'token_type' => 'Bearer',
                 'expires_in' => $this->jwtService->getTokenTTL() * 60,
@@ -119,7 +114,6 @@ class AuthController extends Controller
 
     public function validateToken(): JsonResponse
     {
-        // If middleware passed, token is valid
         $user = request()->attributes->get('auth_user');
 
         return response()->json([
@@ -131,5 +125,19 @@ class AuthController extends Controller
                 'email' => $user->email,
             ],
         ]);
+    }
+
+    /**
+     * Format user for API response (consistent DTO-like output).
+     */
+    private function formatUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'tenant_id' => $user->tenant_id,
+        ];
     }
 }
