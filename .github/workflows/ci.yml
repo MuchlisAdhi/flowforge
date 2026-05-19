@@ -60,11 +60,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/identity-service/vendor
-          key: ${{ runner.os }}-composer-identity-${{ hashFiles('services/identity-service/composer.lock') }}
+          key: ${{ runner.os }}-composer-identity-${{ hashFiles('services/identity-service/composer.json') }}
           restore-keys: ${{ runner.os }}-composer-identity-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-audit
 
       - name: Copy env
         run: cp .env.testing .env
@@ -127,10 +127,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/workflow-service/vendor
-          key: ${{ runner.os }}-composer-workflow-${{ hashFiles('services/workflow-service/composer.lock') }}
+          key: ${{ runner.os }}-composer-workflow-${{ hashFiles('services/workflow-service/composer.json') }}
+          restore-keys: ${{ runner.os }}-composer-workflow-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-audit
 
       - name: Copy env
         run: cp .env.testing .env
@@ -192,10 +193,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/execution-service/vendor
-          key: ${{ runner.os }}-composer-execution-${{ hashFiles('services/execution-service/composer.lock') }}
+          key: ${{ runner.os }}-composer-execution-${{ hashFiles('services/execution-service/composer.json') }}
+          restore-keys: ${{ runner.os }}-composer-execution-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-audit
 
       - name: Copy env
         run: cp .env.testing .env
@@ -252,10 +254,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/ai-service/vendor
-          key: ${{ runner.os }}-composer-ai-${{ hashFiles('services/ai-service/composer.lock') }}
+          key: ${{ runner.os }}-composer-ai-${{ hashFiles('services/ai-service/composer.json') }}
+          restore-keys: ${{ runner.os }}-composer-ai-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-audit
 
       - name: Copy env
         run: cp .env.testing .env
@@ -290,11 +293,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: services/frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run linting
         run: npm run lint
@@ -343,7 +344,7 @@ jobs:
       - name: Install Playwright
         working-directory: services/frontend
         run: |
-          npm ci
+          npm install
           npx playwright install --with-deps chromium
 
       - name: Run E2E tests
