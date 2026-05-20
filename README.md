@@ -83,8 +83,8 @@ docker compose exec workflow-service php artisan migrate --seed
 docker compose exec execution-service php artisan migrate --seed
 
 # Access the application
-# Frontend: http://localhost
-# API: http://localhost/api
+# Frontend: http://localhost:8080
+# API: http://localhost:8080/api
 # RabbitMQ Management: http://localhost:15672
 ```
 
