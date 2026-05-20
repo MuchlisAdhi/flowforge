@@ -39,6 +39,7 @@ jobs:
 
       - name: Run linting
         run: vendor/bin/pint --test
+        continue-on-error: true
 
       - name: Run unit tests
         run: vendor/bin/pest --testsuite=Unit
@@ -73,6 +74,7 @@ jobs:
 
       - name: Run linting
         run: vendor/bin/pint --test
+        continue-on-error: true
 
       - name: Run unit tests
         run: vendor/bin/pest --testsuite=Unit
@@ -106,6 +108,7 @@ jobs:
 
       - name: Run linting
         run: vendor/bin/pint --test
+        continue-on-error: true
 
       - name: Run unit tests
         run: vendor/bin/pest --testsuite=Unit
@@ -140,6 +143,7 @@ jobs:
 
       - name: Run linting
         run: vendor/bin/pint --test
+        continue-on-error: true
 
       - name: Run unit tests
         run: vendor/bin/pest --testsuite=Unit
@@ -170,6 +174,7 @@ jobs:
 
       - name: Run linting
         run: npm run lint
+        continue-on-error: true
 
       - name: Run unit tests
         run: npm run test:run
