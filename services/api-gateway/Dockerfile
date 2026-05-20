@@ -12,7 +12,6 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignor
 # ============================================
 FROM php:8.3-cli-alpine AS app
 
-# Install system dependencies and PHP extensions
 RUN apk add --no-cache \
     postgresql-dev \
     libzip-dev \
@@ -21,7 +20,6 @@ RUN apk add --no-cache \
     linux-headers \
     && docker-php-ext-install pdo pdo_pgsql pcntl zip opcache
 
-# Install Redis extension
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && pecl install redis \
     && docker-php-ext-enable redis \
@@ -29,15 +27,12 @@ RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
 
 WORKDIR /app
 
-# Copy vendor from build stage
 COPY --from=vendor /app/vendor ./vendor
-
-# Copy application code
 COPY . .
+RUN if [ -f .env.docker ]; then cp .env.docker .env; fi
 
-# Generate optimized autoload (composer available from COPY)
-RUN cp /usr/bin/composer /usr/local/bin/composer 2>/dev/null || true
-RUN if command -v composer > /dev/null; then composer dump-autoload --optimize --no-dev; fi
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
 

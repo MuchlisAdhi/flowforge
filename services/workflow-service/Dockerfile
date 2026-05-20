@@ -29,6 +29,10 @@ WORKDIR /app
 
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
+RUN if [ -f .env.docker ]; then cp .env.docker .env; fi
+
+RUN mkdir -p storage/logs storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8002
 
