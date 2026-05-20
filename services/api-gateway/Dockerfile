@@ -5,31 +5,27 @@ FROM composer:2 AS vendor
 
 WORKDIR /app
 COPY composer.json ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
 
 # ============================================
 # Stage 2: Application
 # ============================================
-FROM php:8.3-fpm-alpine AS app
+FROM php:8.3-cli-alpine AS app
 
-# Install system dependencies
+# Install system dependencies and PHP extensions
 RUN apk add --no-cache \
     postgresql-dev \
     libzip-dev \
     zip \
     unzip \
-    supervisor \
-    nginx \
-    && docker-php-ext-install pdo pdo_pgsql pcntl zip opcache sockets
+    linux-headers \
+    && docker-php-ext-install pdo pdo_pgsql pcntl zip opcache
 
 # Install Redis extension
 RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del .build-deps
-
-# PHP configuration
-COPY docker/php.ini /usr/local/etc/php/conf.d/custom.ini
 
 WORKDIR /app
 
@@ -39,14 +35,9 @@ COPY --from=vendor /app/vendor ./vendor
 # Copy application code
 COPY . .
 
-# Generate optimized autoload
-RUN composer dump-autoload --optimize --no-dev
-
-# Set permissions
-RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
-
-# Copy supervisor config
-COPY docker/supervisord.conf /etc/supervisord.conf
+# Generate optimized autoload (composer available from COPY)
+RUN cp /usr/bin/composer /usr/local/bin/composer 2>/dev/null || true
+RUN if command -v composer > /dev/null; then composer dump-autoload --optimize --no-dev; fi
 
 EXPOSE 8000
 
