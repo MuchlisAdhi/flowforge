@@ -243,7 +243,7 @@ describe('DAG Validation', function () {
         ];
 
         expect(fn () => $this->parser->validate($steps))
-            ->toThrow(DagValidationException::class, 'allowed commands');
+            ->toThrow(DagValidationException::class, 'must be one of');
     });
 
     it('validates retry configuration', function () {
