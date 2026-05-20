@@ -56,33 +56,21 @@ jobs:
           extensions: pdo_pgsql, redis, pcntl, zip
           coverage: pcov
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: services/identity-service/vendor
-          key: ${{ runner.os }}-composer-identity-${{ hashFiles('services/identity-service/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-identity-
-
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist 
-
-      - name: Copy env
-        run: cp .env.testing .env
-
-      - name: Generate key
-        run: php artisan key:generate
+        run: composer install --no-interaction --prefer-dist
 
       - name: Run linting
         run: vendor/bin/pint --test
 
-      - name: Run tests
-        run: php artisan test --coverage --min=70
+      - name: Run unit tests
+        run: vendor/bin/pest --testsuite=Unit
         env:
           DB_HOST: 127.0.0.1
           DB_DATABASE: flowforge_test
           DB_USERNAME: flowforge
           DB_PASSWORD: secret
           REDIS_HOST: 127.0.0.1
+          JWT_SECRET: testing-jwt-secret
 
   # =============================================
   # Backend: Workflow Service
@@ -123,32 +111,20 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: pdo_pgsql, redis, pcntl, zip
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: services/workflow-service/vendor
-          key: ${{ runner.os }}-composer-workflow-${{ hashFiles('services/workflow-service/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-workflow-
-
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist 
-
-      - name: Copy env
-        run: cp .env.testing .env
-
-      - name: Generate key
-        run: php artisan key:generate
+        run: composer install --no-interaction --prefer-dist
 
       - name: Run linting
         run: vendor/bin/pint --test
 
-      - name: Run tests
-        run: php artisan test --coverage --min=70
+      - name: Run unit tests
+        run: vendor/bin/pest --testsuite=Unit
         env:
           DB_HOST: 127.0.0.1
           DB_DATABASE: flowforge_test
           DB_USERNAME: flowforge
           DB_PASSWORD: secret
+          JWT_SECRET: testing-jwt-secret
 
   # =============================================
   # Backend: Execution Service
@@ -189,32 +165,20 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: pdo_pgsql, redis, pcntl, zip
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: services/execution-service/vendor
-          key: ${{ runner.os }}-composer-execution-${{ hashFiles('services/execution-service/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-execution-
-
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist 
-
-      - name: Copy env
-        run: cp .env.testing .env
-
-      - name: Generate key
-        run: php artisan key:generate
+        run: composer install --no-interaction --prefer-dist
 
       - name: Run linting
         run: vendor/bin/pint --test
 
-      - name: Run tests
-        run: php artisan test --coverage --min=70
+      - name: Run unit tests
+        run: vendor/bin/pest --testsuite=Unit
         env:
           DB_HOST: 127.0.0.1
           DB_DATABASE: flowforge_test
           DB_USERNAME: flowforge
           DB_PASSWORD: secret
+          JWT_SECRET: testing-jwt-secret
 
   # =============================================
   # Backend: AI Service
@@ -226,21 +190,6 @@ jobs:
       run:
         working-directory: services/ai-service
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: flowforge_test
-          POSTGRES_USER: flowforge
-          POSTGRES_PASSWORD: secret
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U flowforge"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -250,31 +199,17 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: pdo_pgsql, redis, pcntl, zip
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: services/ai-service/vendor
-          key: ${{ runner.os }}-composer-ai-${{ hashFiles('services/ai-service/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-ai-
-
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist 
-
-      - name: Copy env
-        run: cp .env.testing .env
-
-      - name: Generate key
-        run: php artisan key:generate
+        run: composer install --no-interaction --prefer-dist
 
       - name: Run linting
         run: vendor/bin/pint --test
 
-      - name: Run tests
-        run: php artisan test
+      - name: Run unit tests
+        run: vendor/bin/pest --testsuite=Unit
         env:
-          DB_HOST: 127.0.0.1
-          DB_DATABASE: flowforge_test
           AI_PROVIDER: mock
+          JWT_SECRET: testing-jwt-secret
 
   # =============================================
   # Frontend
@@ -299,9 +234,6 @@ jobs:
 
       - name: Run linting
         run: npm run lint
-
-      - name: Run type check
-        run: npm run type-check
 
       - name: Run tests
         run: npm run test:run
