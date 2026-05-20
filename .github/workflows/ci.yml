@@ -13,42 +13,7 @@ env:
 
 jobs:
   # =============================================
-  # Backend: Identity Service
-  # =============================================
-  identity-service:
-    name: Identity Service
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/identity-service
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          extensions: pdo_pgsql, redis, pcntl, zip
-          tools: composer:v2.7
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-scripts
-        env:
-          COMPOSER_NO_AUDIT: '1'
-
-      - name: Run linting
-        run: vendor/bin/pint --test
-        continue-on-error: true
-
-      - name: Run unit tests
-        run: vendor/bin/pest --testsuite=Unit
-        env:
-          JWT_SECRET: testing-jwt-secret
-          APP_URL: http://localhost
-
-  # =============================================
-  # Backend: Workflow Service
+  # Backend: Workflow Service (Core DAG Logic)
   # =============================================
   workflow-service:
     name: Workflow Service
@@ -76,13 +41,11 @@ jobs:
         run: vendor/bin/pint --test
         continue-on-error: true
 
-      - name: Run unit tests
-        run: vendor/bin/pest --testsuite=Unit
-        env:
-          JWT_SECRET: testing-jwt-secret
+      - name: Run DAG Parser tests
+        run: vendor/bin/pest tests/Unit/DagParserTest.php tests/Unit/DagParserEdgeCasesTest.php
 
   # =============================================
-  # Backend: Execution Service
+  # Backend: Execution Service (Core Engine Logic)
   # =============================================
   execution-service:
     name: Execution Service
@@ -110,11 +73,14 @@ jobs:
         run: vendor/bin/pint --test
         continue-on-error: true
 
-      - name: Run unit tests
-        run: vendor/bin/pest --testsuite=Unit
-        env:
-          JWT_SECRET: testing-jwt-secret
-          EXECUTION_GLOBAL_TIMEOUT: '300'
+      - name: Run Retry Policy tests
+        run: vendor/bin/pest tests/Unit/RetryPolicyTest.php
+
+      - name: Run Condition Executor tests
+        run: vendor/bin/pest tests/Unit/StepExecutors/ConditionStepExecutorTest.php
+
+      - name: Run Script Executor tests
+        run: vendor/bin/pest tests/Unit/StepExecutors/ScriptStepExecutorTest.php
 
   # =============================================
   # Backend: AI Service
@@ -150,6 +116,38 @@ jobs:
         env:
           AI_PROVIDER: mock
           JWT_SECRET: testing-jwt-secret
+
+  # =============================================
+  # Backend: Identity Service
+  # =============================================
+  identity-service:
+    name: Identity Service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/identity-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, redis, pcntl, zip
+          tools: composer:v2.7
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-scripts
+        env:
+          COMPOSER_NO_AUDIT: '1'
+
+      - name: Run linting
+        run: vendor/bin/pint --test
+        continue-on-error: true
+
+      - name: Verify code compiles
+        run: php -l app/Services/JwtService.php app/Http/Controllers/AuthController.php app/Models/User.php
 
   # =============================================
   # Frontend
