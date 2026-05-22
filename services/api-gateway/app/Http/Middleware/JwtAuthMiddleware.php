@@ -37,7 +37,13 @@ class JwtAuthMiddleware
 
     private function extractToken(Request $request): ?string
     {
+        // Try Authorization header first
         $header = $request->header('Authorization', '');
-        return str_starts_with($header, 'Bearer ') ? substr($header, 7) : null;
+        if (str_starts_with($header, 'Bearer ')) {
+            return substr($header, 7);
+        }
+
+        // Fall back to query parameter (needed for SSE/EventSource which can't set headers)
+        return $request->query('token');
     }
 }

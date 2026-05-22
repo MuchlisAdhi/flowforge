@@ -105,6 +105,7 @@ services:
       - DB_PASSWORD=secret
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - JWT_SECRET=flowforge-jwt-secret-for-local-development
       - IDENTITY_SERVICE_URL=http://identity-service:8001
       - WORKFLOW_SERVICE_URL=http://workflow-service:8002
       - EXECUTION_SERVICE_URL=http://execution-service:8003
@@ -137,7 +138,7 @@ services:
       - DB_PASSWORD=secret
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=your-jwt-secret-change-in-production
+      - JWT_SECRET=flowforge-jwt-secret-for-local-development
       - JWT_TTL=60
     ports:
       - "8001:8001"
