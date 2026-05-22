@@ -21,7 +21,7 @@ class CreateWorkflowRequest extends FormRequest
             'steps.*.id' => ['required', 'string', 'max:100'],
             'steps.*.type' => ['required', 'string', 'in:http,script,delay,condition'],
             'steps.*.name' => ['required', 'string', 'max:255'],
-            'steps.*.depends_on' => ['required', 'array'],
+            'steps.*.depends_on' => ['present', 'array'],
             'steps.*.depends_on.*' => ['string', 'max:100'],
             'steps.*.config' => ['required', 'array'],
             'steps.*.retry' => ['nullable', 'array'],
