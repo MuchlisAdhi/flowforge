@@ -171,6 +171,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=flowforge
       - RABBITMQ_PASSWORD=secret
+      - EXECUTION_SERVICE_URL=http://execution-service:8003
     ports:
       - "8002:8002"
     depends_on:
@@ -204,6 +205,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=flowforge
       - RABBITMQ_PASSWORD=secret
+      - QUEUE_CONNECTION=rabbitmq
       - EXECUTION_MAX_PARALLEL=10
       - EXECUTION_GLOBAL_TIMEOUT=3600
     ports:

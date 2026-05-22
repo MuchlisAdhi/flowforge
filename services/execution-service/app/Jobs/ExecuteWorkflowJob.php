@@ -21,7 +21,7 @@ class ExecuteWorkflowJob implements ShouldQueue
     public function __construct(
         public readonly string $runId
     ) {
-        $this->queue = 'workflow_execution';
+        $this->queue = 'default';
     }
 
     public function handle(ExecutionEngine $engine): void
@@ -33,8 +33,8 @@ class ExecuteWorkflowJob implements ShouldQueue
             return;
         }
 
-        if ($run->status !== WorkflowRun::STATUS_PENDING) {
-            Log::warning("WorkflowRun {$this->runId} is not in pending state: {$run->status}");
+        if (! in_array($run->status, [WorkflowRun::STATUS_PENDING, WorkflowRun::STATUS_RUNNING])) {
+            Log::warning("WorkflowRun {$this->runId} is not in pending/running state: {$run->status}");
             return;
         }
 

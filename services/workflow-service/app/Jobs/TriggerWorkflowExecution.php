@@ -8,9 +8,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Dispatches workflow run to execution service via RabbitMQ.
+ * Dispatches workflow run to execution service via HTTP.
  */
 class TriggerWorkflowExecution implements ShouldQueue
 {
@@ -18,18 +20,35 @@ class TriggerWorkflowExecution implements ShouldQueue
 
     public function __construct(
         public readonly WorkflowRun $run
-    ) {
-        $this->queue = 'workflow_execution';
-    }
+    ) {}
 
     public function handle(): void
     {
-        // This job is consumed by the execution-service worker.
-        // The execution service will handle the actual DAG resolution and step execution.
-        // For MVP within same DB, we mark it as received here.
-        // In production, this would be a message published to RabbitMQ
-        // and consumed by execution-service independently.
-
+        // Mark as running
         $this->run->update(['status' => WorkflowRun::STATUS_RUNNING, 'started_at' => now()]);
+
+        // Call execution service to actually execute the workflow
+        $executionServiceUrl = env('EXECUTION_SERVICE_URL', 'http://execution-service:8003');
+
+        try {
+            $response = Http::timeout(10)->post("{$executionServiceUrl}/api/executions/run", [
+                'run_id' => $this->run->id,
+                'workflow_id' => $this->run->workflow_id,
+                'workflow_version_id' => $this->run->workflow_version_id,
+                'tenant_id' => $this->run->tenant_id,
+            ]);
+
+            if (!$response->successful()) {
+                Log::warning("Execution service returned non-success", [
+                    'run_id' => $this->run->id,
+                    'status' => $response->status(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error("Failed to call execution service", [
+                'run_id' => $this->run->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
