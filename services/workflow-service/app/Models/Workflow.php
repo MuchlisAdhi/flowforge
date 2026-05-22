@@ -33,7 +33,7 @@ class Workflow extends Model
 
     public function latestVersion()
     {
-        return $this->hasOne(WorkflowVersion::class)->latestOfMany('version');
+        return $this->hasOne(WorkflowVersion::class)->orderByDesc('version');
     }
 
     public function runs(): HasMany
