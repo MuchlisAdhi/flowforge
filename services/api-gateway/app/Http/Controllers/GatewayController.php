@@ -114,35 +114,27 @@ class GatewayController extends Controller
     public function sseStream(Request $request)
     {
         $tenantId = $request->attributes->get('tenant_id');
+        $channel = "flowforge:execution:{$tenantId}";
+        $events = [];
 
-        return response()->stream(function () use ($tenantId) {
-            $channel = "flowforge:execution:{$tenantId}";
+        try {
+            $redis = app('redis')->connection();
+            $messages = $redis->lrange("sse:{$channel}", 0, -1);
 
-            // Send connection event
-            echo "event: connected\n";
-            echo "data: " . json_encode(['status' => 'connected', 'channel' => $channel]) . "\n\n";
-
-            // Try to flush any pending execution events from Redis
-            try {
-                $redis = app('redis')->connection();
-                $messages = $redis->lrange("sse:{$channel}", 0, -1);
-
-                if ($messages && count($messages) > 0) {
-                    foreach ($messages as $message) {
-                        echo "event: execution\n";
-                        echo "data: {$message}\n\n";
-                    }
-                    $redis->del("sse:{$channel}");
+            if ($messages && count($messages) > 0) {
+                foreach ($messages as $message) {
+                    $events[] = json_decode($message, true) ?? $message;
                 }
-            } catch (\Throwable $e) {
-                // Redis not available, just send heartbeat
+                $redis->del("sse:{$channel}");
             }
+        } catch (\Throwable $e) {
+            // Redis unavailable — return empty events
+        }
 
-            // Send heartbeat and close — EventSource will auto-reconnect
-            echo ": heartbeat\n\n";
-            if (ob_get_level()) ob_flush();
-            flush();
-        }, 200, [
+        // Return as SSE-formatted response (single shot)
+        return response("event: connected\ndata: " . json_encode(['status' => 'connected', 'channel' => $channel]) . "\n\n" .
+            implode('', array_map(fn($event) => "event: execution\ndata: " . json_encode($event) . "\n\n", $events)) .
+            ": heartbeat\n\n", 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'Connection' => 'keep-alive',
