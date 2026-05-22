@@ -41,6 +41,14 @@ class MockAIProvider implements AIServiceInterface
         $steps = [];
         $promptLower = strtolower($prompt);
 
+        // Try to extract URL from prompt
+        $fetchUrl = 'https://jsonplaceholder.typicode.com/posts/1';
+        if (preg_match('/https?:\/\/[^\s,)]+/', $prompt, $matches)) {
+            $fetchUrl = $matches[0];
+            // Clean trailing punctuation
+            $fetchUrl = rtrim($fetchUrl, '.,;:!)');
+        }
+
         // Step 1: Always start with a data fetch
         $steps[] = [
             'id' => 'fetch_data',
@@ -49,7 +57,7 @@ class MockAIProvider implements AIServiceInterface
             'depends_on' => [],
             'config' => [
                 'method' => 'GET',
-                'url' => 'https://api.example.com/data',
+                'url' => $fetchUrl,
                 'headers' => ['Accept' => 'application/json'],
             ],
             'retry' => [
@@ -86,7 +94,7 @@ class MockAIProvider implements AIServiceInterface
         }
 
         // Step 4: If there's a send/notify/webhook action
-        if (str_contains($promptLower, 'kirim') || str_contains($promptLower, 'send') || str_contains($promptLower, 'webhook') || str_contains($promptLower, 'notif')) {
+        if (str_contains($promptLower, 'kirim') || str_contains($promptLower, 'send') || str_contains($promptLower, 'webhook') || str_contains($promptLower, 'notif') || str_contains($promptLower, 'alert')) {
             $steps[] = [
                 'id' => 'send_result',
                 'type' => 'http',
@@ -94,9 +102,9 @@ class MockAIProvider implements AIServiceInterface
                 'depends_on' => [end($steps)['id']],
                 'config' => [
                     'method' => 'POST',
-                    'url' => 'https://webhook.example.com/notify',
+                    'url' => 'https://httpbin.org/post',
                     'headers' => ['Content-Type' => 'application/json'],
-                    'body' => ['status' => 'completed'],
+                    'body' => ['status' => 'completed', 'source' => 'flowforge'],
                 ],
                 'retry' => [
                     'max_retries' => 2,
