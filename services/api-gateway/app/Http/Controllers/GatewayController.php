@@ -118,49 +118,30 @@ class GatewayController extends Controller
         return response()->stream(function () use ($tenantId) {
             $channel = "flowforge:execution:{$tenantId}";
 
-            // Send initial connection event
+            // Send connection event
             echo "event: connected\n";
             echo "data: " . json_encode(['status' => 'connected', 'channel' => $channel]) . "\n\n";
+
+            // Try to flush any pending execution events from Redis
+            try {
+                $redis = app('redis')->connection();
+                $messages = $redis->lrange("sse:{$channel}", 0, -1);
+
+                if ($messages && count($messages) > 0) {
+                    foreach ($messages as $message) {
+                        echo "event: execution\n";
+                        echo "data: {$message}\n\n";
+                    }
+                    $redis->del("sse:{$channel}");
+                }
+            } catch (\Throwable $e) {
+                // Redis not available, just send heartbeat
+            }
+
+            // Send heartbeat and close — EventSource will auto-reconnect
+            echo ": heartbeat\n\n";
             if (ob_get_level()) ob_flush();
             flush();
-
-            // Use polling approach for SSE (more reliable than blocking subscribe)
-            $lastId = '0-0';
-            $timeout = 0;
-
-            while (!connection_aborted()) {
-                try {
-                    $redis = app('redis')->connection();
-                    // Use Redis Stream or List polling as fallback
-                    $messages = $redis->lrange("sse:{$channel}", 0, -1);
-
-                    if ($messages && count($messages) > 0) {
-                        foreach ($messages as $message) {
-                            echo "event: execution\n";
-                            echo "data: {$message}\n\n";
-                            if (ob_get_level()) ob_flush();
-                            flush();
-                        }
-                        // Clear processed messages
-                        $redis->del("sse:{$channel}");
-                    }
-                } catch (\Throwable $e) {
-                    // Send heartbeat even on redis error
-                }
-
-                // Send heartbeat every 15 seconds to keep connection alive
-                echo ": heartbeat\n\n";
-                if (ob_get_level()) ob_flush();
-                flush();
-
-                sleep(3);
-                $timeout += 3;
-
-                // Max connection time: 5 minutes, then client reconnects
-                if ($timeout >= 300) {
-                    break;
-                }
-            }
         }, 200, [
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
