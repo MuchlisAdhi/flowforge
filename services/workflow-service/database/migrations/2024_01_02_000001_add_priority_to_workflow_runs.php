@@ -16,6 +16,12 @@ use Illuminate\Support\Facades\DB;
  */
 return new class extends Migration
 {
+    /**
+     * Disable wrapping this migration in a transaction,
+     * required for CREATE INDEX CONCURRENTLY in PostgreSQL.
+     */
+    public $withinTransaction = false;
+
     public function up(): void
     {
         Schema::table('workflow_runs', function (Blueprint $table) {
