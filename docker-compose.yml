@@ -62,8 +62,6 @@ services:
       - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
-      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     networks:
       - flowforge
     restart: unless-stopped
@@ -72,6 +70,20 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+
+  rabbitmq-init:
+    image: rabbitmq:3.13-management-alpine
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        rabbitmqadmin --host=rabbitmq --username=flowforge --password=secret declare queue name=default durable=true &&
+        echo "Queue 'default' declared successfully"
+    networks:
+      - flowforge
+    restart: "no"
 
   # ===========================================
   # Backend Services
@@ -235,6 +247,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
     networks:
       - flowforge
     restart: unless-stopped
